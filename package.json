@@ -11,16 +11,35 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepare": "husky",
     "prepublishOnly": "npm run clean && npm run build"
   },
-  "keywords": ["printify", "api", "print-on-demand"],
+  "lint-staged": {
+    "*.ts": "eslint"
+  },
+  "keywords": [
+    "printify",
+    "api",
+    "print-on-demand"
+  ],
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.4",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.59.3",
+    "vitest": "^4.1.6"
   },
   "engines": {
     "node": ">=18"
