@@ -1,2 +1,4 @@
 node_modules/
 dist/
+.claude/agent-memory/code-security-reviewer/MEMORY.md
+.claude/agent-memory/code-security-reviewer/project_printify_sdk.md
