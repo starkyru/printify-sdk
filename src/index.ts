@@ -27,6 +27,7 @@ export type {
   Shipment,
   CreateOrderRequest,
   OrderListParams,
+  OrderStatus,
   ShippingRequest,
   ShippingRate,
   Webhook,

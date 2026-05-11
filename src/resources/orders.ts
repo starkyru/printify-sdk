@@ -1,4 +1,5 @@
-import { BaseResource } from '../base-resource.js';
+import { ShopScopedResource } from '../shop-scoped-resource.js';
+import { assertSafeStringId } from '../validation.js';
 import type {
   PrintifyOrder,
   CreateOrderRequest,
@@ -7,30 +8,22 @@ import type {
 } from '../types/index.js';
 import type { ShippingRequest, ShippingRate } from '../types/shipping.js';
 
-export class OrdersResource extends BaseResource {
-  constructor(
-    baseUrl: string,
-    accessToken: string,
-    private readonly defaultShopId?: string,
-  ) {
-    super(baseUrl, accessToken);
-  }
-
-  private resolveShopId(shopId?: string): string {
-    const id = shopId ?? this.defaultShopId;
-    if (!id) {
-      throw new Error(
-        'shopId is required. Provide it per-call or set a default on PrintifyClient.',
-      );
-    }
-    return id;
-  }
-
+export class OrdersResource extends ShopScopedResource {
   private buildQueryString(params?: OrderListParams): string {
     if (!params) return '';
     const parts: string[] = [];
-    if (params.page !== undefined) parts.push(`page=${params.page}`);
-    if (params.limit !== undefined) parts.push(`limit=${params.limit}`);
+    if (params.page !== undefined) {
+      if (!Number.isInteger(params.page) || params.page < 1) {
+        throw new Error('page must be a positive integer');
+      }
+      parts.push(`page=${params.page}`);
+    }
+    if (params.limit !== undefined) {
+      if (!Number.isInteger(params.limit) || params.limit < 1) {
+        throw new Error('limit must be a positive integer');
+      }
+      parts.push(`limit=${params.limit}`);
+    }
     if (params.status !== undefined)
       parts.push(`status=${encodeURIComponent(params.status)}`);
     return parts.length > 0 ? `?${parts.join('&')}` : '';
@@ -44,6 +37,7 @@ export class OrdersResource extends BaseResource {
     params?: OrderListParams,
   ): Promise<PaginatedResponse<PrintifyOrder>> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
     const qs = this.buildQueryString(params);
     return this.httpGet<PaginatedResponse<PrintifyOrder>>(
       `/shops/${id}/orders.json${qs}`,
@@ -55,6 +49,8 @@ export class OrdersResource extends BaseResource {
    */
   async get(orderId: string, shopId?: string): Promise<PrintifyOrder> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(orderId, 'orderId');
     return this.httpGet<PrintifyOrder>(
       `/shops/${id}/orders/${orderId}.json`,
     );
@@ -68,6 +64,7 @@ export class OrdersResource extends BaseResource {
     shopId?: string,
   ): Promise<PrintifyOrder> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
     return this.httpPost<PrintifyOrder>(`/shops/${id}/orders.json`, data);
   }
 
@@ -79,6 +76,8 @@ export class OrdersResource extends BaseResource {
     shopId?: string,
   ): Promise<PrintifyOrder> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(orderId, 'orderId');
     return this.httpPost<PrintifyOrder>(
       `/shops/${id}/orders/${orderId}/send_to_production.json`,
     );
@@ -92,6 +91,7 @@ export class OrdersResource extends BaseResource {
     shopId?: string,
   ): Promise<ShippingRate[]> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
     return this.httpPost<ShippingRate[]>(
       `/shops/${id}/orders/shipping.json`,
       data,
@@ -103,6 +103,8 @@ export class OrdersResource extends BaseResource {
    */
   async cancel(orderId: string, shopId?: string): Promise<void> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(orderId, 'orderId');
     await this.httpPost(
       `/shops/${id}/orders/${orderId}/cancel.json`,
     );

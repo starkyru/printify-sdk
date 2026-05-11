@@ -71,8 +71,17 @@ export interface CreateOrderRequest {
   };
 }
 
+export type OrderStatus =
+  | 'pending'
+  | 'cancelled'
+  | 'on-hold'
+  | 'payment-not-received'
+  | 'fulfilled'
+  | 'sent-to-production'
+  | 'partially-fulfilled';
+
 export interface OrderListParams {
   page?: number;
   limit?: number;
-  status?: string;
+  status?: OrderStatus;
 }

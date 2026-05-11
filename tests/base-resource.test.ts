@@ -18,7 +18,11 @@ class TestResource extends BaseResource {
   }
 }
 
-function mockFetch(status: number, body: unknown, headers: Record<string, string> = {}) {
+function mockFetch(
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+) {
   return vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
@@ -29,7 +33,10 @@ function mockFetch(status: number, body: unknown, headers: Record<string, string
 }
 
 describe('BaseResource', () => {
-  const resource = new TestResource('https://api.printify.com/v1', 'tok_test');
+  const resource = new TestResource(
+    'https://api.printify.com/v1',
+    'tok_test',
+  );
 
   beforeEach(() => {
     vi.stubGlobal('fetch', mockFetch(200, { id: 1 }));
@@ -37,6 +44,18 @@ describe('BaseResource', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('rejects invalid baseUrl', () => {
+    expect(() => new TestResource('not-a-url', 'tok')).toThrow(
+      'Invalid baseUrl',
+    );
+  });
+
+  it('accepts valid HTTP URL for local testing', () => {
+    expect(
+      () => new TestResource('http://localhost:3000', 'tok'),
+    ).not.toThrow();
   });
 
   it('sends GET with auth header', async () => {
@@ -108,26 +127,44 @@ describe('BaseResource', () => {
     }
   });
 
-  it('throws PrintifyApiError on non-ok response', async () => {
+  it('sets retryAfter to null for non-numeric header', async () => {
     vi.stubGlobal(
       'fetch',
-      mockFetch(404, { message: 'Not found' }),
+      mockFetch(429, {}, { 'retry-after': 'Thu, 01 Jan 2099 00:00:00 GMT' }),
     );
+    try {
+      await resource.get('/shops.json');
+    } catch (e) {
+      expect((e as PrintifyRateLimitError).retryAfter).toBeNull();
+    }
+  });
+
+  it('throws PrintifyApiError on non-ok response', async () => {
+    vi.stubGlobal('fetch', mockFetch(404, { message: 'Not found' }));
     await expect(resource.get('/missing.json')).rejects.toThrow(
       PrintifyApiError,
     );
   });
 
   it('handles non-JSON error body', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      headers: new Headers(),
-      json: () => Promise.reject(new Error('not json')),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: new Headers(),
+        json: () => Promise.reject(new Error('not json')),
+      }),
+    );
     await expect(resource.get('/fail.json')).rejects.toThrow(
       'HTTP 500 Internal Server Error',
     );
+  });
+
+  it('includes AbortSignal in fetch calls', async () => {
+    await resource.get('/shops.json');
+    const init = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 });

@@ -1,4 +1,5 @@
 import { BaseResource } from '../base-resource.js';
+import { assertSafeIntId } from '../validation.js';
 import type {
   Blueprint,
   PrintProvider,
@@ -17,6 +18,7 @@ export class BlueprintsResource extends BaseResource {
    * Get a single blueprint by ID.
    */
   async get(blueprintId: number): Promise<Blueprint> {
+    assertSafeIntId(blueprintId, 'blueprintId');
     return this.httpGet<Blueprint>(`/catalog/blueprints/${blueprintId}.json`);
   }
 
@@ -24,6 +26,7 @@ export class BlueprintsResource extends BaseResource {
    * Get all print providers for a blueprint.
    */
   async getPrintProviders(blueprintId: number): Promise<PrintProvider[]> {
+    assertSafeIntId(blueprintId, 'blueprintId');
     return this.httpGet<PrintProvider[]>(
       `/catalog/blueprints/${blueprintId}/print_providers.json`,
     );
@@ -36,6 +39,8 @@ export class BlueprintsResource extends BaseResource {
     blueprintId: number,
     printProviderId: number,
   ): Promise<VariantsResponse> {
+    assertSafeIntId(blueprintId, 'blueprintId');
+    assertSafeIntId(printProviderId, 'printProviderId');
     return this.httpGet<VariantsResponse>(
       `/catalog/blueprints/${blueprintId}/print_providers/${printProviderId}/variants.json`,
     );

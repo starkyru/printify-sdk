@@ -3,6 +3,7 @@ export interface Webhook {
   topic: WebhookTopic;
   url: string;
   shop_id: string;
+  /** Signing secret — treat as a credential. Do not log or store in plaintext. */
   secret: string;
 }
 
@@ -18,6 +19,7 @@ export type WebhookTopic =
 export interface CreateWebhookRequest {
   topic: WebhookTopic;
   url: string;
+  /** If omitted, Printify generates one. Use crypto.randomBytes(32).toString('hex') for a strong value. */
   secret?: string;
 }
 

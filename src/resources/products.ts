@@ -1,4 +1,5 @@
-import { BaseResource } from '../base-resource.js';
+import { ShopScopedResource } from '../shop-scoped-resource.js';
+import { assertSafeStringId } from '../validation.js';
 import type {
   Product,
   ProductImage,
@@ -8,30 +9,13 @@ import type {
   PaginatedResponse,
 } from '../types/index.js';
 
-export class ProductsResource extends BaseResource {
-  constructor(
-    baseUrl: string,
-    accessToken: string,
-    private readonly defaultShopId?: string,
-  ) {
-    super(baseUrl, accessToken);
-  }
-
-  private resolveShopId(shopId?: string): string {
-    const id = shopId ?? this.defaultShopId;
-    if (!id) {
-      throw new Error(
-        'shopId is required. Provide it per-call or set a default on PrintifyClient.',
-      );
-    }
-    return id;
-  }
-
+export class ProductsResource extends ShopScopedResource {
   /**
    * List all products for a shop.
    */
   async list(shopId?: string): Promise<PaginatedResponse<Product>> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
     return this.httpGet<PaginatedResponse<Product>>(
       `/shops/${id}/products.json`,
     );
@@ -42,6 +26,8 @@ export class ProductsResource extends BaseResource {
    */
   async get(productId: string, shopId?: string): Promise<Product> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(productId, 'productId');
     return this.httpGet<Product>(`/shops/${id}/products/${productId}.json`);
   }
 
@@ -53,6 +39,7 @@ export class ProductsResource extends BaseResource {
     shopId?: string,
   ): Promise<Product> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
     return this.httpPost<Product>(`/shops/${id}/products.json`, data);
   }
 
@@ -65,6 +52,8 @@ export class ProductsResource extends BaseResource {
     shopId?: string,
   ): Promise<Product> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(productId, 'productId');
     return this.httpPut<Product>(
       `/shops/${id}/products/${productId}.json`,
       data,
@@ -76,6 +65,8 @@ export class ProductsResource extends BaseResource {
    */
   async delete(productId: string, shopId?: string): Promise<void> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(productId, 'productId');
     await this.httpDelete(`/shops/${id}/products/${productId}.json`);
   }
 
@@ -88,6 +79,8 @@ export class ProductsResource extends BaseResource {
     shopId?: string,
   ): Promise<void> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(productId, 'productId');
     await this.httpPost(
       `/shops/${id}/products/${productId}/publish.json`,
       publishData,
@@ -102,6 +95,8 @@ export class ProductsResource extends BaseResource {
     shopId?: string,
   ): Promise<ProductImage[]> {
     const id = this.resolveShopId(shopId);
+    assertSafeStringId(id, 'shopId');
+    assertSafeStringId(productId, 'productId');
     return this.httpGet<ProductImage[]>(
       `/shops/${id}/products/${productId}/images.json`,
     );

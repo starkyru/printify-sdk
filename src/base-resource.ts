@@ -1,10 +1,19 @@
 import { PrintifyApiError, PrintifyRateLimitError } from './errors.js';
 
+const DEFAULT_TIMEOUT_MS = 30_000;
+
 export class BaseResource {
   constructor(
     protected readonly baseUrl: string,
     protected readonly accessToken: string,
-  ) {}
+    protected readonly timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  ) {
+    try {
+      new URL(baseUrl);
+    } catch {
+      throw new Error(`Invalid baseUrl: "${baseUrl}"`);
+    }
+  }
 
   protected async httpGet<T>(path: string): Promise<T> {
     return this.request<T>('GET', path);
@@ -34,45 +43,59 @@ export class BaseResource {
       'Content-Type': 'application/json',
     };
 
-    const init: RequestInit = { method, headers };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    const init: RequestInit = { method, headers, signal: controller.signal };
 
     if (body !== undefined) {
       init.body = JSON.stringify(body);
     }
 
-    const response = await fetch(url, init);
+    try {
+      const response = await fetch(url, init);
 
-    if (response.status === 429) {
-      const retryAfterHeader = response.headers.get('retry-after');
-      const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : null;
-      throw new PrintifyRateLimitError(
-        Number.isNaN(retryAfter) ? null : retryAfter,
-      );
-    }
-
-    if (!response.ok) {
-      let errorBody: { message?: string; errors?: Record<string, string[]> } | undefined;
-      try {
-        errorBody = (await response.json()) as {
-          message?: string;
-          errors?: Record<string, string[]>;
-        };
-      } catch {
-        // Response body may not be JSON
+      if (response.status === 429) {
+        const retryAfterHeader = response.headers.get('retry-after');
+        // Printify uses integer seconds; RFC 7231 HTTP-date format would
+        // cause parseInt to return NaN, which is mapped to null below.
+        const retryAfter = retryAfterHeader
+          ? parseInt(retryAfterHeader, 10)
+          : null;
+        throw new PrintifyRateLimitError(
+          Number.isNaN(retryAfter) ? null : retryAfter,
+        );
       }
 
-      throw new PrintifyApiError(
-        errorBody?.message ?? `HTTP ${response.status} ${response.statusText}`,
-        response.status,
-        errorBody?.errors,
-      );
-    }
+      if (!response.ok) {
+        let errorBody:
+          | { message?: string; errors?: Record<string, string[]> }
+          | undefined;
+        try {
+          errorBody = (await response.json()) as {
+            message?: string;
+            errors?: Record<string, string[]>;
+          };
+        } catch {
+          // Response body may not be JSON
+        }
 
-    // Some endpoints return 204 No Content
-    if (response.status === 204) {
-      return undefined as T;
-    }
+        throw new PrintifyApiError(
+          errorBody?.message ??
+            `HTTP ${response.status} ${response.statusText}`,
+          response.status,
+          errorBody?.errors,
+        );
+      }
 
-    return (await response.json()) as T;
+      // Some endpoints return 204 No Content
+      if (response.status === 204) {
+        return undefined as T;
+      }
+
+      return (await response.json()) as T;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 }

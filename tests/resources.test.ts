@@ -58,12 +58,25 @@ describe('BlueprintsResource', () => {
 
   it('getPrintProviders()', async () => {
     await bp.getPrintProviders(5);
-    expect(calledPath()).toBe(`${BASE}/catalog/blueprints/5/print_providers.json`);
+    expect(calledPath()).toBe(
+      `${BASE}/catalog/blueprints/5/print_providers.json`,
+    );
   });
 
   it('getVariants()', async () => {
     await bp.getVariants(5, 10);
-    expect(calledPath()).toBe(`${BASE}/catalog/blueprints/5/print_providers/10/variants.json`);
+    expect(calledPath()).toBe(
+      `${BASE}/catalog/blueprints/5/print_providers/10/variants.json`,
+    );
+  });
+
+  it('rejects invalid blueprintId', () => {
+    expect(bp.get(-1)).rejects.toThrow('Invalid blueprintId');
+    expect(bp.get(NaN)).rejects.toThrow('Invalid blueprintId');
+  });
+
+  it('rejects invalid printProviderId', () => {
+    expect(bp.getVariants(5, 0)).rejects.toThrow('Invalid printProviderId');
   });
 });
 
@@ -75,6 +88,14 @@ describe('ProductsResource', () => {
   it('throws without shopId', () => {
     const noShop = new ProductsResource(BASE, TOKEN);
     expect(noShop.list()).rejects.toThrow('shopId is required');
+  });
+
+  it('rejects path-traversal shopId', () => {
+    expect(products.list('../admin')).rejects.toThrow('Invalid shopId');
+  });
+
+  it('rejects path-traversal productId', () => {
+    expect(products.get('../../secret')).rejects.toThrow('Invalid productId');
   });
 
   it('list()', async () => {
@@ -105,7 +126,15 @@ describe('ProductsResource', () => {
 
   it('publish()', async () => {
     vi.stubGlobal('fetch', mockFetch(null, 204));
-    await products.publish('prod_1', { title: true, description: true, images: true, variants: true, tags: true });
+    await products.publish('prod_1', {
+      title: true,
+      description: true,
+      images: true,
+      variants: true,
+      tags: true,
+      keyFeatures: true,
+      shipping_template: true,
+    });
     expect(calledPath()).toContain('/publish.json');
   });
 
@@ -121,10 +150,42 @@ describe('OrdersResource', () => {
   beforeEach(() => vi.stubGlobal('fetch', mockFetch({ data: [] })));
 
   it('list() with params', async () => {
-    await orders.list(undefined, { page: 2, limit: 10, status: 'pending' });
+    await orders.list(undefined, {
+      page: 2,
+      limit: 10,
+      status: 'pending',
+    });
     expect(calledPath()).toContain('page=2');
     expect(calledPath()).toContain('limit=10');
     expect(calledPath()).toContain('status=pending');
+  });
+
+  it('rejects NaN page', () => {
+    expect(orders.list(undefined, { page: NaN })).rejects.toThrow(
+      'page must be a positive integer',
+    );
+  });
+
+  it('rejects negative page', () => {
+    expect(orders.list(undefined, { page: -1 })).rejects.toThrow(
+      'page must be a positive integer',
+    );
+  });
+
+  it('rejects Infinity limit', () => {
+    expect(orders.list(undefined, { limit: Infinity })).rejects.toThrow(
+      'limit must be a positive integer',
+    );
+  });
+
+  it('rejects zero limit', () => {
+    expect(orders.list(undefined, { limit: 0 })).rejects.toThrow(
+      'limit must be a positive integer',
+    );
+  });
+
+  it('rejects path-traversal orderId', () => {
+    expect(orders.get('../admin')).rejects.toThrow('Invalid orderId');
   });
 
   it('get()', async () => {
@@ -155,15 +216,45 @@ describe('UploadsResource', () => {
 
   beforeEach(() => vi.stubGlobal('fetch', mockFetch({ id: 'img_1' })));
 
-  it('uploadImage()', async () => {
-    await uploads.uploadImage({ file_name: 'test.png', url: 'https://example.com/img.png' });
+  it('uploadImage() with HTTPS URL', async () => {
+    await uploads.uploadImage({
+      file_name: 'test.png',
+      url: 'https://example.com/img.png',
+    });
     expect(calledPath()).toBe(`${BASE}/uploads/images.json`);
+    expect(calledMethod()).toBe('POST');
+  });
+
+  it('rejects HTTP upload URL', () => {
+    expect(
+      uploads.uploadImage({
+        file_name: 'test.png',
+        url: 'http://internal-server/img.png',
+      }),
+    ).rejects.toThrow('Upload URL must use HTTPS');
+  });
+
+  it('rejects invalid upload URL', () => {
+    expect(
+      uploads.uploadImage({ file_name: 'test.png', url: 'not-a-url' }),
+    ).rejects.toThrow('Invalid upload URL');
+  });
+
+  it('allows base64 upload without URL validation', async () => {
+    await uploads.uploadImage({
+      file_name: 'test.png',
+      contents: 'base64data',
+    });
     expect(calledMethod()).toBe('POST');
   });
 
   it('getImage()', async () => {
     await uploads.getImage('img_1');
     expect(calledPath()).toBe(`${BASE}/uploads/images/img_1.json`);
+  });
+
+  it('rejects path-traversal imageId', () => {
+    expect(uploads.getImage('../secret')).rejects.toThrow('Invalid imageId');
   });
 
   it('archiveImage()', async () => {
@@ -185,7 +276,10 @@ describe('WebhooksResource', () => {
 
   it('create()', async () => {
     vi.stubGlobal('fetch', mockFetch({ id: 'wh_1' }));
-    await webhooks.create({ topic: 'order:created', url: 'https://example.com/hook' });
+    await webhooks.create({
+      topic: 'order:created',
+      url: 'https://example.com/hook',
+    });
     expect(calledMethod()).toBe('POST');
   });
 
@@ -193,6 +287,12 @@ describe('WebhooksResource', () => {
     vi.stubGlobal('fetch', mockFetch({ id: 'wh_1' }));
     await webhooks.update('wh_1', { url: 'https://new.com/hook' });
     expect(calledMethod()).toBe('PUT');
+  });
+
+  it('rejects path-traversal webhookId', () => {
+    expect(
+      webhooks.update('../admin', { url: 'https://x.com' }),
+    ).rejects.toThrow('Invalid webhookId');
   });
 
   it('delete()', async () => {

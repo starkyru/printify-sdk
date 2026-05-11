@@ -29,6 +29,7 @@ export type {
   Shipment,
   CreateOrderRequest,
   OrderListParams,
+  OrderStatus,
 } from './order.js';
 
 export type { ShippingRequest, ShippingRate } from './shipping.js';
