@@ -1,0 +1,42 @@
+export { PrintifyClient } from './client.js';
+export type { PrintifyClientOptions } from './client.js';
+
+export { PrintifyApiError, PrintifyRateLimitError } from './errors.js';
+
+export type {
+  Shop,
+  Blueprint,
+  PrintProvider,
+  Variant,
+  Placeholder,
+  VariantsResponse,
+  Product,
+  ProductVariant,
+  ProductOption,
+  ProductOptionValue,
+  ProductImage,
+  PrintArea,
+  PrintAreaPlaceholder,
+  PrintAreaImage,
+  CreateProductRequest,
+  UpdateProductRequest,
+  PublishRequest,
+  PrintifyOrder,
+  OrderAddress,
+  OrderLineItem,
+  Shipment,
+  CreateOrderRequest,
+  OrderListParams,
+  ShippingRequest,
+  ShippingRate,
+  Webhook,
+  WebhookTopic,
+  CreateWebhookRequest,
+  UpdateWebhookRequest,
+  WebhookEvent,
+  UploadImageByUrlRequest,
+  UploadImageByBase64Request,
+  UploadImageRequest,
+  UploadedImage,
+  PaginatedResponse,
+} from './types/index.js';
